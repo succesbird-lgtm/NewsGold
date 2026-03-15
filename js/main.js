@@ -80,7 +80,7 @@ async function fetchLivePrices() {
     if (!track) return;
 
     const metals = [
-      { name: 'GOLD (XAU)', prices: { USD: prices.USD.value, EUR: prices.EUR.value }, unit: '/oz' },
+      { name: 'GOLD (g)', prices: { USD: prices.USD.value ? (prices.USD.value / 31.1035).toFixed(2) : null, EUR: prices.EUR.value ? (prices.EUR.value / 31.1035).toFixed(2) : null }, unit: '/g' },
       { name: 'SILVER (XAG)', prices: { USD: 24.32, EUR: 22.18 }, unit: '/oz' },
       { name: 'PLATINUM', prices: { USD: 958.40, EUR: 876.50 }, unit: '/oz' },
       { name: 'PALLADIUM', prices: { USD: 1024.00, EUR: 936.00 }, unit: '/oz' },
@@ -92,9 +92,12 @@ async function fetchLivePrices() {
     const directions = [false, true, false, true, false, true];
 
     const items = metals.map((m, i) => {
-      const priceStr = m.prices.USD
-        ? `$${parseFloat(m.prices.USD).toLocaleString('en-US', {minimumFractionDigits:2})}${m.unit}`
-        : `R$${parseFloat(m.prices.BRL).toLocaleString('en-US', {minimumFractionDigits:2})}${m.unit}`;
+      const usdVal = m.prices.USD ? parseFloat(m.prices.USD) : null;
+const brlVal = m.prices.BRL ? parseFloat(m.prices.BRL) : null;
+if (!usdVal && !brlVal) return '';
+   const priceStr = usdVal
+        ? `$${usdVal.toLocaleString('en-US', {minimumFractionDigits:2})}${m.unit}`
+        : `R$${brlVal.toLocaleString('en-US', {minimumFractionDigits:2})}${m.unit}`;
       return `
         <div class="ticker-item">
           <span class="metal-name">${m.name}</span>
