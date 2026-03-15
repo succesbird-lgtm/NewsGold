@@ -11,7 +11,7 @@ const CONFIG = {
   // Primary: goldapi.io (requires free key) — replace YOUR_KEY
   // Fallback: static demo prices
   goldApiKey: '',          // Add your goldapi.io key here (free tier available)
-  metalApiKey: '',         // OR add metalpriceapi.com key
+  metalApiKey: '156e8eae74c27cc2b2d44af0c0ae2c91',         // OR add metalpriceapi.com key
   refreshInterval: 300000, // 5 minutes
   siteName: 'NewsOnGold',
 };
@@ -29,40 +29,30 @@ const GoldPrice = (() => {
   };
 
   // Try fetching live price from a free endpoint
-  async function fetchLivePrices() {
-    try {
-      // Using a free, no-auth CORS proxy approach with metals-api public demo
-      // For production: replace with your actual API key from goldapi.io (free)
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 5000);
+async function fetchLivePrices() {
+  try {
+    const res = await fetch(
+      `https://api.metalpriceapi.com/v1/latest?api_key=156e8eae74c27cc2b2d44af0c0ae2c91&base=USD&currencies=EUR,GBP,BRL,XAU,XAG,XPT,XPD`
+    );
+    if (!res.ok) throw new Error('API error');
+    const json = await res.json();
 
-      // goldprice.org open API (no key needed, CORS-friendly)
-      const res = await fetch(
-        'https://data-asg.goldprice.org/GetData/USD-XAU,EUR-XAU,GBP-XAU,BRL-XAU/1',
-        { signal: controller.signal }
-      );
-      clearTimeout(timeout);
-
-      if (!res.ok) throw new Error('API error');
-      const json = await res.json();
-
-      if (json && json.items && json.items.length > 0) {
-        const item = json.items[0];
-        // goldprice returns price per troy oz
-        const currencies = ['USD', 'EUR', 'GBP', 'BRL'];
-        const vals = item.split(',');
-        currencies.forEach((cur, i) => {
-          if (vals[i]) {
-            prices[cur].value = parseFloat(vals[i]);
-          }
-        });
-        return true;
-      }
-    } catch (err) {
-      console.log('Live price fetch failed, using demo data:', err.message);
+    if (json.success && json.rates) {
+      const r = json.rates;
+      // API returns how many EUR/GBP per 1 USD
+      // XAU = troy oz of gold priced in USD (inverted: 1/r.XAUUSD)
+      const goldUSD = 1 / r.XAUUSD;
+      prices.USD.value = parseFloat(goldUSD.toFixed(2));
+      prices.EUR.value = parseFloat((goldUSD * r.EURUSD).toFixed(2));
+      prices.GBP.value = parseFloat((goldUSD * r.GBPUSD).toFixed(2));
+      prices.BRL.value = parseFloat((goldUSD * r.BRLUSD).toFixed(2));
     }
-    return false;
+    return true;
+  } catch (err) {
+    console.log('MetalPriceAPI fetch failed, using demo data:', err.message);
   }
+  return false;
+}
 
   function renderPrices() {
     const grid = document.getElementById('goldPricesGrid');
